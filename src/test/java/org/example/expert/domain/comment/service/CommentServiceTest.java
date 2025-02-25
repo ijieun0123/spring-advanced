@@ -1,28 +1,36 @@
 package org.example.expert.domain.comment.service;
 
 import org.example.expert.domain.comment.dto.request.CommentSaveRequest;
+import org.example.expert.domain.comment.dto.response.CommentResponse;
 import org.example.expert.domain.comment.dto.response.CommentSaveResponse;
 import org.example.expert.domain.comment.entity.Comment;
 import org.example.expert.domain.comment.repository.CommentRepository;
 import org.example.expert.domain.common.dto.AuthUser;
 import org.example.expert.domain.common.exception.InvalidRequestException;
 import org.example.expert.domain.common.exception.ServerException;
+import org.example.expert.domain.manager.entity.Manager;
 import org.example.expert.domain.todo.entity.Todo;
 import org.example.expert.domain.todo.repository.TodoRepository;
 import org.example.expert.domain.user.entity.User;
 import org.example.expert.domain.user.enums.UserRole;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.Field;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CommentServiceTest {
@@ -70,5 +78,36 @@ class CommentServiceTest {
 
         // then
         assertNotNull(result);
+    }
+
+    @Test
+    public void comments_전체_조회(){
+        // given
+        AuthUser authUser = new AuthUser(1L, "email", UserRole.USER);
+        User user = User.fromAuthUser(authUser);
+        Todo todo = new Todo("title", "contents", "weather", user);
+
+        when(todoRepository.save(any(Todo.class))).thenAnswer(invocation -> {
+            Todo t = invocation.getArgument(0);
+            Field field = Todo.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(t, 1L);
+            return t;
+        });
+
+        Todo savedTodo = todoRepository.save(todo);
+
+        List<Comment> commentList = new LinkedList<>();
+        commentList.add(new Comment("contents1", user, savedTodo));
+        commentList.add(new Comment("contents2", user, savedTodo));
+        commentList.add(new Comment("contents3", user, savedTodo));
+
+        given(commentRepository.findByTodoIdWithUser(todo.getId())).willReturn(commentList);
+
+        // when
+        List<CommentResponse> resultList = commentService.getComments(todo.getId());
+
+        // then
+        assertThat(resultList.size()).isEqualTo(3);
     }
 }

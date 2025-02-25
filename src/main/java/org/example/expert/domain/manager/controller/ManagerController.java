@@ -22,17 +22,17 @@ public class ManagerController {
     private final ManagerService managerService;
     private final JwtUtil jwtUtil;
 
-    @PostMapping("/todos/{todoId}/managers")
+    @PostMapping("/managers")
     public ResponseEntity<ManagerSaveResponse> saveManager(
             @Auth AuthUser authUser,
-            @PathVariable long todoId,
+            @RequestParam long todoId,
             @Valid @RequestBody ManagerSaveRequest managerSaveRequest
     ) {
         return ResponseEntity.ok(managerService.saveManager(authUser, todoId, managerSaveRequest));
     }
 
-    @GetMapping("/todos/{todoId}/managers")
-    public ResponseEntity<List<ManagerResponse>> getMembers(@PathVariable long todoId) {
+    @GetMapping("/managers")
+    public ResponseEntity<List<ManagerResponse>> getMembers(@RequestParam long todoId) {
         return ResponseEntity.ok(managerService.getManagers(todoId));
     }
 

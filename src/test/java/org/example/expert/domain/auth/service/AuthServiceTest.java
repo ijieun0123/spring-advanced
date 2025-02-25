@@ -2,7 +2,10 @@ package org.example.expert.domain.auth.service;
 
 import org.example.expert.config.JwtUtil;
 import org.example.expert.config.PasswordEncoder;
+import org.example.expert.domain.auth.dto.request.SigninRequest;
 import org.example.expert.domain.auth.dto.request.SignupRequest;
+import org.example.expert.domain.auth.dto.response.SigninResponse;
+import org.example.expert.domain.auth.exception.AuthException;
 import org.example.expert.domain.common.exception.InvalidRequestException;
 import org.example.expert.domain.user.entity.User;
 import org.example.expert.domain.user.enums.UserRole;
@@ -15,36 +18,37 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.BDDAssumptions.given;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+//@ExtendWith(MockitoExtension.class)
+@SpringBootTest
 public class AuthServiceTest {
 
-    @Mock
+    @Autowired
     private UserRepository userRepository;
 
-    @Mock
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
-    @Mock
+    @Autowired
     private JwtUtil jwtUtil;
 
-    @InjectMocks
+    @Autowired
     private AuthService authService;
 
-    @BeforeEach
-    void setUp() {
-        authService = new AuthService(userRepository, passwordEncoder, jwtUtil); // 명시적으로 주입
-    }
-
     @Test
+    @Transactional
     void 회원가입(){
         // given
         final User newUser = User.builder()
@@ -65,6 +69,7 @@ public class AuthServiceTest {
     }
 
     @Test
+    @Transactional
     void 중복_회원_예외(){
         // given
         SignupRequest signupRequest = new SignupRequest("ijieun@gmail.com", "Password123@", "USER");
@@ -77,5 +82,76 @@ public class AuthServiceTest {
         });
 
         assertThat(e.getMessage()).isEqualTo("이미 존재하는 이메일입니다.");
+    }
+
+    @Test
+    @Transactional
+    void 로그인(){
+        // given
+        String email = "ijieun@gmail.com";
+        String password = "Password123@";
+        UserRole userRole = UserRole.USER;
+        String encodedPassword = passwordEncoder.encode(password);
+        String bearerToken = "someBearerToken";
+        MockHttpSession session = new MockHttpSession();
+
+        User newUser = new User(email, encodedPassword, userRole);
+
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(newUser));
+        when(passwordEncoder.matches(password, encodedPassword)).thenReturn(true);
+        when(jwtUtil.createToken(newUser.getId(), email, userRole)).thenReturn(bearerToken);
+
+        SigninRequest signinRequest = new SigninRequest(email, password);
+
+        // when
+        SigninResponse signinResponse = authService.signin(signinRequest, session);
+
+        // then
+        assertNotNull(signinResponse.getBearerToken());
+        assertEquals(bearerToken, signinResponse.getBearerToken());
+    }
+
+    @Test
+    @Transactional
+    void signin_존재하지_않는_유저_로그인_테스트() {
+        // given
+        SigninRequest signinRequest = new SigninRequest();
+        signinRequest.setEmail("ijieun@gmail.com");
+        signinRequest.setPassword("Password123@");
+
+        MockHttpSession session = new MockHttpSession();
+
+        // when & then
+        InvalidRequestException e = assertThrows(InvalidRequestException.class, () -> {
+            authService.signin(signinRequest, session);
+        });
+
+        assertThat(e.getMessage()).isEqualTo("가입되지 않은 유저입니다.");
+    }
+
+    @Test
+    @Transactional
+    void signin_잘못된_비밀번호_테스트() {
+        // given
+        String email = "ijieun@gmail.com";
+        String password = "Password123@";
+        UserRole userRole = UserRole.USER;
+
+        MockHttpSession session = new MockHttpSession();
+
+        User user = new User(email, passwordEncoder.encode(password), userRole);
+
+        User savedUser = userRepository.save(user);
+
+        SigninRequest signinRequest = new SigninRequest();
+        signinRequest.setEmail(email);
+        signinRequest.setPassword("Password123!");
+
+        // when & then
+        AuthException e = assertThrows(AuthException.class, () -> {
+            authService.signin(signinRequest, session);
+        });
+
+        assertThat(e.getMessage()).isEqualTo("잘못된 비밀번호입니다.");
     }
 }

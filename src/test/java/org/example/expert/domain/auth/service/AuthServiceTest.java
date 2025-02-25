@@ -57,8 +57,6 @@ public class AuthServiceTest {
                 .userRole(UserRole.USER)
                 .build();
 
-        when(userRepository.save(any(User.class))).thenReturn(newUser);
-
         // when
         final User savedUser = userRepository.save(newUser);
 
@@ -72,13 +70,14 @@ public class AuthServiceTest {
     @Transactional
     void 중복_회원_예외(){
         // given
-        SignupRequest signupRequest = new SignupRequest("ijieun@gmail.com", "Password123@", "USER");
+        SignupRequest signupRequest1 = new SignupRequest("ijieun@gmail.com", "Password123@", "USER");
+        SignupRequest signupRequest2 = new SignupRequest("ijieun@gmail.com", "Password123@", "USER");
 
-        when(userRepository.existsByEmail(signupRequest.getEmail())).thenReturn(true);
+        authService.signup(signupRequest1);
 
         // when & then
         InvalidRequestException e = assertThrows(InvalidRequestException.class, () -> {
-            authService.signup(signupRequest);
+            authService.signup(signupRequest2);
         });
 
         assertThat(e.getMessage()).isEqualTo("이미 존재하는 이메일입니다.");
@@ -92,14 +91,10 @@ public class AuthServiceTest {
         String password = "Password123@";
         UserRole userRole = UserRole.USER;
         String encodedPassword = passwordEncoder.encode(password);
-        String bearerToken = "someBearerToken";
         MockHttpSession session = new MockHttpSession();
 
         User newUser = new User(email, encodedPassword, userRole);
-
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(newUser));
-        when(passwordEncoder.matches(password, encodedPassword)).thenReturn(true);
-        when(jwtUtil.createToken(newUser.getId(), email, userRole)).thenReturn(bearerToken);
+        userRepository.save(newUser);
 
         SigninRequest signinRequest = new SigninRequest(email, password);
 
@@ -108,7 +103,6 @@ public class AuthServiceTest {
 
         // then
         assertNotNull(signinResponse.getBearerToken());
-        assertEquals(bearerToken, signinResponse.getBearerToken());
     }
 
     @Test

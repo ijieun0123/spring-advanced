@@ -30,9 +30,11 @@ public class AuthController {
     }
 
     @PostMapping("/auth/signin")
-    public SigninResponse signin(@Valid @RequestBody SigninRequest signinRequest, HttpServletRequest request) {
+    public ResponseEntity<SigninResponse> signin(@Valid @RequestBody SigninRequest signinRequest, HttpServletRequest request) {
         HttpSession session = request.getSession();
 
-        return authService.signin(signinRequest, session);
+        SigninResponse signinResponse = authService.signin(signinRequest, session);
+
+        return new ResponseEntity<>(signinResponse, HttpStatus.OK);
     }
 }

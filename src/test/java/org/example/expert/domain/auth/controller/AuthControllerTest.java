@@ -3,6 +3,7 @@ package org.example.expert.domain.auth.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import org.example.expert.config.JwtUtil;
+import org.example.expert.domain.auth.dto.request.SigninRequest;
 import org.example.expert.domain.auth.dto.request.SignupRequest;
 import org.example.expert.domain.auth.dto.response.SignupResponse;
 import org.example.expert.domain.auth.service.AuthService;
@@ -53,4 +54,24 @@ public class AuthControllerTest {
                 .andExpect(status().isCreated());
     }
 
+    @Test
+    void 로그인() throws Exception {
+        User user = new User("ijieun@gmail.com", "Password123@", UserRole.USER);
+        SignupRequest signupRequest = new SignupRequest(
+                user.getEmail(),
+                user.getPassword(),
+                user.getUserRole().toString()
+        );
+        authService.signup(signupRequest);
+
+        SigninRequest signinRequest = new SigninRequest(
+                user.getEmail(),
+                user.getPassword()
+        );
+
+        mvc.perform(post("/auth/signin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signinRequest)))
+                .andExpect(status().isOk());
+    }
 }

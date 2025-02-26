@@ -121,4 +121,33 @@ public class UserServiceTest {
         // then
         assertThat(e.getMessage()).isEqualTo("새 비밀번호는 기존 비밀번호와 같을 수 없습니다.");
     }
+
+    @Test
+    @Transactional
+    void 잘못된_비밀번호를_입력했을_때(){
+        // given
+        Long userId = 1L;
+        String oldPassword = "Password123@";
+        String newPassword = "Password123!";
+        String oldEncodedPassword = "oldEncodedPassword";
+        String newEncodedPassword = "newEncodedPassword";
+        String wrongPassword = "wrongPassword";
+
+        User user = new User("ijieun123@gmail.com", oldPassword, UserRole.USER);
+        user.setPassword(oldEncodedPassword);
+
+        UserChangePasswordRequest userChangePasswordRequest = new UserChangePasswordRequest(wrongPassword, newPassword);
+
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+        given(passwordEncoder.matches(newPassword, oldEncodedPassword)).willReturn(false);
+        given(passwordEncoder.matches(wrongPassword, oldEncodedPassword)).willReturn(false);
+
+        // when
+        InvalidRequestException e = assertThrows(InvalidRequestException.class, () -> {
+            userService.changePassword(userId, userChangePasswordRequest);
+        });
+
+        // then
+        assertThat(e.getMessage()).isEqualTo("잘못된 비밀번호입니다.");
+    }
 }

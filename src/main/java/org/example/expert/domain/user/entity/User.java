@@ -1,10 +1,7 @@
 package org.example.expert.domain.user.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.example.expert.domain.common.dto.AuthUser;
 import org.example.expert.domain.common.entity.Timestamped;
 import org.example.expert.domain.user.enums.UserRole;
@@ -19,6 +16,7 @@ public class User extends Timestamped {
     private Long id;
     @Column(unique = true)
     private String email;
+    @Setter
     private String password;
     @Enumerated(EnumType.STRING)
     private UserRole userRole;

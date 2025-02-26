@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -91,5 +92,33 @@ public class UserServiceTest {
         // then
         assertEquals(newEncodedPassword, user.getPassword());
         verify(userRepository).findById(userId);
+    }
+
+    @Test
+    @Transactional
+    void 새_비밀번호가_기존_비밀번호와_같을_때(){
+        // given
+        Long userId = 1L;
+        String oldPassword = "Password123@";
+        String newPassword = "Password123@";
+        String oldEncodedPassword = "EncodedPassword";
+        String newEncodedPassword = "EncodedPassword";
+
+        User user = new User("ijieun123@gmail.com", oldPassword, UserRole.USER);
+        user.setPassword(oldEncodedPassword);
+
+        UserChangePasswordRequest userChangePasswordRequest = new UserChangePasswordRequest(oldPassword, newPassword);
+
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+        given(passwordEncoder.matches(oldPassword, oldEncodedPassword)).willReturn(true);
+        given(passwordEncoder.matches(newPassword, oldEncodedPassword)).willReturn(true);
+
+        // when
+        InvalidRequestException e = assertThrows(InvalidRequestException.class, () -> {
+            userService.changePassword(userId, userChangePasswordRequest);
+        });
+
+        // then
+        assertThat(e.getMessage()).isEqualTo("새 비밀번호는 기존 비밀번호와 같을 수 없습니다.");
     }
 }
